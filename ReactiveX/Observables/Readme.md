@@ -1,28 +1,50 @@
-# Observables
+# Observable
 
-Observable 은 asynchronous events 의 stream 을 다루기 위해 model 되었다. 
-Observable 을 이용해서 callback 지옥에서 벗어날 수 있으며, code 의 가독성은 
-더 좋아지고 error 의 경향이 적어진다.
+ReactiveX 에서 observer 는 Observable 을 subscribe 한다. Observable 이 item 이나 
+sequence of items 를 emit 하면 observer 는 react 한다. Observable 이 미래에 무엇을 
+하든 적절하게 반응하는 observer 를 만들기 때문에, Observable 이 object 를 emit 
+할 때 까지 기다릴 필요가 없어 concurrent 한 operation 을 용이하게 한다.
 
-## Observables Are Composable
-Java 의 Future 의 경우 single level 의 asynchronous execurtion 을 다루는 데 
-있어서 매우 straigtforward 하지만, conditional asynchronous execution flows 를 
-다루는 것은 매우 어렵다. 그러나 Observables 은 asynchronous data 의 sequecne 와
-flows 를 compose 하기 위해 설계되었다.
+## Background
+ReactiveX 에서는 instructions 들이 parallel 로 실행 되며, 그 결과들이 arbitrary order 
+로 observer 에 의해서 capture 된다. Method 를 *calling* 하는 것이 아니라, data 를 
+retrieving 하고 transforming 하는 mechanism 을 Observable 형태로 정의 하고, observer 
+가 이것을 *subscribe* 한다. Observer 는 Observable 이 data 를 emit 할 때 마다 포착하고 
+대응한다.
 
-## Observables Are Less Opinionated
-ReactiveX 는 특정 concurrency 나 asynchronicity 의 source 에 편향되어있지 않다. 
-Observables 은 thread-pools, event loops, non-blocking I/O), actors (such as 
-from Akka) 등을 사용해서 구현될 수 있다. Client code 는 Observables 과의 모든 
-상호 작용을 blocking 구현이든 non-blocking 구현이든 asynchronous 하게 처리한다.
+## Establishing Observers
+Ordinary method call 의 flow 는 다음과 같다.
 
+1. Call a method
+2. Store the return value from that method in a variable
+3. Use that variable and its new value to do something useful
 
-## Reactive Programming
-Observables 의 경우 producer 는 value 가 available 하면 consumer 에게 push 한다.
-Value 가 synchronous 하게 혹은 asynchronous 하게 올 수 있으므로 이러한 접근은 
-좀더 flexible 하다.
+```kotlin
+// make the call, assign its return value to `returnVal`
+val returnVal = someMethod(itsParameters)
+// do something useful with returnVal
+```
 
-Observerable type 일반적인 Observer pattern 에 두가지 semantics 이 추가되어 있다.
+Asynchronous model 의 flow 는 다음과 같다.
 
-* Producer 는 consumer 에게 더 이상 가능한 data 가 없다고 알릴 수 있다.
-* Producer 는 consumer 에게 error 가 발생 했다고 알릴 수 있다.
+1. Define a method that does something useful with the return value 
+from the asynchronous call; this method is part of the *observer*
+2. Define the asynchronous call itself as an *Observable*
+3. Attach the observer to that Observable by *subscribing* it (this also 
+initiates the actions of the Observable)
+4. Go on with your business; whenever the call returns, the observer's 
+method will begin to operate on its return value or values -- the *items* 
+emitted by the Observable
+
+```kotlin
+// defines, but does not invoke, the Subsriber's onNext handler
+// (in this example, the observer is very simple and has only an onNext handler)
+val myOnNext = { it -> do something useful with it }
+// defines, but does not invoke, the Observable
+val myObservable = someObservable(itsParameters)
+// subscribes the Subscriber to the Observable, and invokes the Observable
+myObservable.subsribe(myOnNext)
+// go on about my business
+```
+
+### onNext, onCompleted, and onError
